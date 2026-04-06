@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern QR Code Generator</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons for beautiful UI elements -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- QRCode.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            900: '#1e3a8a',
+                        }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                        'shake': 'shake 0.4s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '25%': { transform: 'translateX(-5px)' },
+                            '50%': { transform: 'translateX(5px)' },
+                            '75%': { transform: 'translateX(-5px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for a polished look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        /* Ensure the generated QR code centers itself properly */
+        #qrcode img, #qrcode canvas {
+            margin: 0 auto;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4 sm:p-8 font-sans text-slate-800 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-brand-100 via-slate-50 to-slate-100">
+
+    <main class="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden transform transition-all">
+        
+        <!-- Header Section -->
+        <div class="bg-brand-600 p-6 text-white text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" 
+                 style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 20px 20px;">
+            </div>
+            <i data-lucide="qr-code" class="w-12 h-12 mx-auto mb-3 opacity-90"></i>
+            <h1 class="text-2xl font-bold tracking-tight">QR Generator</h1>
+            <p class="text-brand-100 text-sm mt-1 font-light">Convert any text or link instantly</p>
+        </div>
+
+        <!-- Input Section -->
+        <div class="p-6 space-y-6">
+            <div class="space-y-2">
+                <label for="qr-input" class="block text-sm font-medium text-slate-700">
+                    Content
+                </label>
+                <div class="relative group">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-brand-500 transition-colors">
+                        <i data-lucide="link" class="w-5 h-5"></i>
+                    </div>
+                    <input type="text" id="qr-input" 
+                        class="block w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-200"
+                        placeholder="e.g., https://example.com or plain text"
+                        autocomplete="off">
+                </div>
+                <p id="error-msg" class="text-red-500 text-xs hidden pl-1">Please enter some text or a URL to generate.</p>
+            </div>
+
+            <button id="generate-btn" 
+                class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-3 px-4 rounded-xl shadow-lg shadow-brand-500/30 hover:shadow-brand-500/40 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 transform transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2">
+                <i data-lucide="zap" class="w-5 h-5"></i>
+                <span>Generate QR Code</span>
+            </button>
+        </div>
+
+        <!-- Result Section (Hidden by default) -->
+        <div id="result-container" class="hidden border-t border-slate-100 bg-slate-50/50 p-6 text-center">
+            <h3 class="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">Your QR Code</h3>
+            
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 inline-block mb-6 relative group">
+                <!-- The QR Code will be injected here -->
+                <div id="qrcode" class="w-[200px] h-[200px] flex items-center justify-center"></div>
+                
+                <!-- Hover overlay for quick download (Desktop) -->
+                <div class="absolute inset-0 bg-white/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl flex items-center justify-center">
+                    <button id="quick-download-btn" class="bg-slate-800 text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform focus:outline-none" title="Download">
+                        <i data-lucide="download" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex gap-3 justify-center">
+                <button id="download-btn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-medium py-2.5 px-4 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span>Save Image</span>
+                </button>
+                <button id="share-btn" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-medium py-2.5 px-4 rounded-xl shadow-sm transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-slate-200 focus:ring-offset-2">
+                    <i data-lucide="share-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // DOM Elements
+        const inputField = document.getElementById('qr-input');
+        const generateBtn = document.getElementById('generate-btn');
+        const resultContainer = document.getElementById('result-container');
+        const qrCodeContainer = document.getElementById('qrcode');
+        const downloadBtn = document.getElementById('download-btn');
+        const quickDownloadBtn = document.getElementById('quick-download-btn');
+        const shareBtn = document.getElementById('share-btn');
+        const errorMsg = document.getElementById('error-msg');
+
+        let currentQRCode = null;
+
+        // Function to handle QR Code Generation
+        function generateQRCode() {
+            const inputValue = inputField.value.trim();
+
+            // Validation
+            if (!inputValue) {
+                // Show error state
+                inputField.classList.add('border-red-500', 'focus:ring-red-500/20', 'focus:border-red-500');
+                inputField.classList.remove('border-slate-200', 'focus:ring-brand-500/20', 'focus:border-brand-500');
+                errorMsg.classList.remove('hidden');
+                
+                // Add shake animation
+                inputField.parentElement.classList.remove('animate-shake');
+                void inputField.parentElement.offsetWidth; // Trigger reflow
+                inputField.parentElement.classList.add('animate-shake');
+                
+                return;
+            }
+
+            // Clear error state
+            inputField.classList.remove('border-red-500', 'focus:ring-red-500/20', 'focus:border-red-500');
+            inputField.classList.add('border-slate-200', 'focus:ring-brand-500/20', 'focus:border-brand-500');
+            errorMsg.classList.add('hidden');
+
+            // Button loading state
+            const originalBtnText = generateBtn.innerHTML;
+            generateBtn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i><span>Generating...</span>`;
+            lucide.createIcons();
+            generateBtn.disabled = true;
+
+            // Simulate slight delay for UX (feels like it's processing)
+            setTimeout(() => {
+                // Clear previous QR Code
+                qrCodeContainer.innerHTML = '';
+
+                // Generate new QR Code
+                currentQRCode = new QRCode(qrCodeContainer, {
+                    text: inputValue,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#0f172a", // slate-900
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H // High error correction for better scannability
+                });
+
+                // Show result container with animation
+                resultContainer.classList.remove('hidden');
+                resultContainer.classList.add('animate-fade-in-up');
+
+                // Restore button state
+                generateBtn.innerHTML = originalBtnText;
+                lucide.createIcons();
+                generateBtn.disabled = false;
+                
+                // Scroll slightly to show the result on smaller screens
+                if(window.innerWidth < 640) {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }
+
+            }, 400);
+        }
+
+        // Function to handle Image Download
+        function downloadQRCode() {
+            // qrcode.js generates a canvas element inside our container
+            const canvas = qrCodeContainer.querySelector('canvas');
+            
+            if (canvas) {
+                // Convert canvas to image URL
+                const imageUrl = canvas.toDataURL("image/png");
+                
+                // Create a temporary link element
+                const downloadLink = document.createElement('a');
+                downloadLink.href = imageUrl;
+                
+                // Suggest a filename based on content (truncated if too long)
+                let filenamePrefix = inputField.value.trim().substring(0, 15).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                if(!filenamePrefix) filenamePrefix = "qr";
+                downloadLink.download = `${filenamePrefix}_qrcode.png`;
+                
+                // Append, click, and remove
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            }
+        }
+
+        // Function to handle native sharing (if available)
+        function shareQRCode() {
+            const inputValue = inputField.value.trim();
+            if (navigator.share) {
+                navigator.share({
+                    title: 'My QR Code',
+                    text: `Check out this QR code for: ${inputValue}`,
+                    url: window.location.href // Or could share just the text if it's a URL
+                }).catch(err => {
+                    console.log('Error sharing:', err);
+                });
+            } else {
+                // Fallback: Copy to clipboard
+                navigator.clipboard.writeText(inputValue).then(() => {
+                    const originalHtml = shareBtn.innerHTML;
+                    shareBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-green-500"></i>`;
+                    lucide.createIcons();
+                    setTimeout(() => {
+                        shareBtn.innerHTML = originalHtml;
+                        lucide.createIcons();
+                    }, 2000);
+                });
+            }
+        }
+
+        // Event Listeners
+        generateBtn.addEventListener('click', generateQRCode);
+        downloadBtn.addEventListener('click', downloadQRCode);
+        quickDownloadBtn.addEventListener('click', downloadQRCode);
+        shareBtn.addEventListener('click', shareQRCode);
+
+        // Allow 'Enter' key to trigger generation
+        inputField.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                generateQRCode();
+            }
+        });
+
+        // Clear error on input typing
+        inputField.addEventListener('input', function() {
+            if(inputField.value.trim().length > 0) {
+                inputField.classList.remove('border-red-500', 'focus:ring-red-500/20', 'focus:border-red-500');
+                inputField.classList.add('border-slate-200', 'focus:ring-brand-500/20', 'focus:border-brand-500');
+                errorMsg.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
